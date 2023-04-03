@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <link rel="stylesheet" href="https://developer.api.autodesk.com/modelderivative/v2/viewers/7.*/style.css"
+        type="text/css">
+    <script src="https://developer.api.autodesk.com/modelderivative/v2/viewers/7.*/viewer3D.js"></script>
+    <script src="./js/customCalibrationsExtension.js"></script>
+    <style>
+        body,
+        html {
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+        }
+        .panel-container{
+            padding: 0 .5rem;
+        }
+    </style>
+    <title>Autodesk Platform Service - Calibrations Panel</title>
+</head>
+
+<body>
+    <div id="forge-viewer"></div>
+    <script>
+
+        const MODEL_URN = "ADD_YOUR_MODEL_URN_HERE"
+        const MODEL_3D_VIEWABLE_GUID = "ADD_YOUR_DOCUMENT_GUID_HERE"
+
+        let viewer;
+
+        const options = {
+            getAccessToken: async function (callback) {
+                const resp = await fetch('/api/auth/token');
+                if (resp.ok) {
+                    const token = await resp.json();
+                    callback(token.access_token, token.expires_in);
+                } else {
+                    throw new Error(await resp.text());
+                }
+            }
+        };
+
+        Autodesk.Viewing.Initializer(options, async function () {
+            const config = {
+                extensions: []
+            };
+
+            viewer = new Autodesk.Viewing.GuiViewer3D(document.getElementById('forge-viewer'), config);
+            viewer.start();
+
+            await loadModel(viewer, MODEL_URN, MODEL_3D_VIEWABLE_GUID);
+
+            viewer.addEventListener(Autodesk.Viewing.EXTENSION_LOADED_EVENT, (event)=>{
+                if(event.extensionId == 'Autodesk.Measure')
+                {
+                    viewer.loadExtension('CustomCalibrations');
+                }
+            })
+
+        });
+
+        async function loadModel(viewer, urn, guid) {
+            return new Promise(function (resolve, reject) {
+                function onDocumentLoadSuccess(doc) {
+                    resolve(viewer.loadDocumentNode(doc, doc.getRoot().findByGuid(guid)));
+                }
+                function onDocumentLoadFailure(code, message) {
+                    console.error('Could not load document.', message);
+                    reject(message);
+                }
+                Autodesk.Viewing.Document.load('urn:' + urn, onDocumentLoadSuccess, onDocumentLoadFailure);
+            });
+        }
+
+    </script>
+</body>
+
+</html>
